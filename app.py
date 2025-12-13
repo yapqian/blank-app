@@ -35,9 +35,10 @@ def detect_language(text: str) -> str:
 # =========================
 @st.cache_resource(show_spinner=False)
 def load_ocr_reader():
-    # English-only OCR reader (fastest/most stable)
+    # English-only OCR reader with GPU support if available
     try:
-        return easyocr.Reader(["en"], gpu=False)
+        gpu = torch.cuda.is_available()
+        return easyocr.Reader(["en"], gpu=gpu)
     except Exception:
         return None
 
@@ -84,60 +85,90 @@ def translate_en_to_malay(text: str, max_length: int = 512) -> str:
 # Preprocessing helpers
 # =========================
 def preprocess_image(img: np.ndarray, sharpen: bool = False, threshold: bool = True) -> np.ndarray:
-    """Convert to grayscale, denoise, threshold, optionally sharpen."""
+    """Convert to grayscale, denoise, threshold, optionally sharpen for better OCR."""
     if img is None:
         return img
+    
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Bilateral filtering: preserves edges while removing noise (better than Gaussian for OCR)
+    denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+    
     if threshold:
+        # Adaptive thresholding with larger block size for better sensitivity
         proc = cv2.adaptiveThreshold(
-            blur, 255,
+            denoised, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
-            31, 2
+            41, 3  # Larger blockSize (41) for better sensitivity
         )
     else:
-        proc = blur
+        proc = denoised
+    
     if sharpen:
-        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-        proc = cv2.filter2D(proc, -1, kernel)
+        # Unsharp mask: better than simple kernel for text sharpening
+        gaussian = cv2.GaussianBlur(proc, (0, 0), 2.0)
+        proc = cv2.addWeighted(proc, 1.5, gaussian, -0.5, 0)
+    
     return proc
 
 # =========================
 # OCR functions
 # =========================
 def ocr_image(img: np.ndarray, preprocess_opts: dict) -> tuple:
-    """Return boxed image (RGB/BGR) and extracted raw text (string)."""
+    """Return boxed image (RGB/BGR) and extracted raw text with confidence filtering."""
     if img is None:
         return None, ""
+    
     # Load reader on-demand
     reader = load_ocr_reader()
+    if reader is None:
+        return img.copy(), ""
+    
     proc = preprocess_image(img, sharpen=preprocess_opts["sharpen"], threshold=preprocess_opts["threshold"])
-    # easyocr expects rgb or gray; provide processed image
+    
+    # easyocr.readtext returns list of (bbox, text, confidence)
     try:
         results = reader.readtext(proc)
     except Exception:
         results = []
-    extracted = " ".join([r[1] for r in results]) if results else ""
+    
+    # Filter by confidence threshold (0.0-1.0) — keep only high-confidence detections
+    min_confidence = 0.3  # Adjust: lower = more sensitive, higher = more strict
+    filtered_results = [(bbox, text, conf) for bbox, text, conf in results if conf >= min_confidence]
+    
+    # Extract text with confidence info
+    extracted_texts = []
+    for bbox, text, conf in filtered_results:
+        # Clean text: strip whitespace
+        clean = text.strip()
+        if clean and len(clean) > 1:  # Ignore single characters
+            extracted_texts.append(clean)
+    
+    extracted = " ".join(extracted_texts)
+    
+    # Draw bounding boxes on original image
     boxed = img.copy()
-    for (bbox, text, prob) in results:
-        # bbox is 4 points; draw rectangle using pts 0 and 2
+    for (bbox, text, conf) in filtered_results:
+        # bbox is 4 points (corners); draw rectangle
         p1, p2, p3, p4 = bbox
-        p1 = tuple(map(int, p1)); p3 = tuple(map(int, p3))
-        cv2.rectangle(boxed, p1, p3, (0, 255, 0), 2)
-        cv2.putText(boxed, text, (p1[0], max(p1[1]-8, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1, cv2.LINE_AA)
+        p1 = tuple(map(int, p1))
+        p3 = tuple(map(int, p3))
+        
+        # Color based on confidence: green (high), yellow (medium), red (low)
+        if conf >= 0.7:
+            color = (0, 255, 0)  # Green
+        elif conf >= 0.5:
+            color = (0, 255, 255)  # Yellow
+        else:
+            color = (0, 0, 255)  # Red
+        
+        cv2.rectangle(boxed, p1, p3, color, 2)
+        # Draw text and confidence
+        label = f"{text} ({conf:.2f})"
+        cv2.putText(boxed, label, (p1[0], max(p1[1]-8, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+    
     return boxed, clean_text(extracted)
-
-def ocr_pdf_bytes(file_bytes: bytes, preprocess_opts: dict) -> tuple:
-    pages = convert_from_bytes(file_bytes)
-    images = []
-    full_text = []
-    for page in pages:
-        page_np = np.array(page.convert("RGB"))
-        boxed, extracted = ocr_image(page_np, preprocess_opts)
-        images.append(boxed)
-        full_text.append(extracted)
-    return images, "\n".join(full_text).strip()
 
 # =========================
 # Fake news placeholder

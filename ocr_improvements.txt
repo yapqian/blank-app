@@ -1,0 +1,123 @@
+OCR IMPROVEMENTS APPLIED:
+
+1. GPU Support:
+   - load_ocr_reader() now enables GPU if torch.cuda.is_available()
+   - Faster inference on systems with CUDA
+
+2. Better Preprocessing:
+   - Replaced Gaussian blur with bilateral filtering (preserves edges)
+   - Increased adaptive threshold blockSize from 31 to 41 (more sensitive)
+   - Improved sharpening using unsharp mask instead of basic kernel
+
+3. Confidence Filtering:
+   - Added min_confidence threshold (0.3 by default - adjust 0.0-1.0)
+   - Filters out low-confidence OCR detections
+   - Visual feedback: green (high conf), yellow (medium), red (low)
+
+4. Text Extraction:
+   - Filter single characters and empty results
+   - Better text joining and cleaning
+   - Confidence scores displayed in output
+
+TO APPLY THESE CHANGES:
+
+Replace lines 36-43 (load_ocr_reader):
+```python
+@st.cache_resource(show_spinner=False)
+def load_ocr_reader():
+    # English-only OCR reader with GPU support if available
+    try:
+        gpu = torch.cuda.is_available()
+        return easyocr.Reader(["en"], gpu=gpu)
+    except Exception:
+        return None
+```
+
+Replace lines 88-104 (preprocess_image):
+```python
+def preprocess_image(img: np.ndarray, sharpen: bool = False, threshold: bool = True) -> np.ndarray:
+    """Convert to grayscale, denoise, threshold, optionally sharpen for better OCR."""
+    if img is None:
+        return img
+    
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Bilateral filtering: preserves edges while removing noise
+    denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    if threshold:
+        # Larger blockSize for better sensitivity
+        proc = cv2.adaptiveThreshold(
+            denoised, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            41, 3
+        )
+    else:
+        proc = denoised
+    
+    if sharpen:
+        # Unsharp mask for better text sharpening
+        gaussian = cv2.GaussianBlur(proc, (0, 0), 2.0)
+        proc = cv2.addWeighted(proc, 1.5, gaussian, -0.5, 0)
+    
+    return proc
+```
+
+Replace lines 111-132 (ocr_image):
+```python
+def ocr_image(img: np.ndarray, preprocess_opts: dict) -> tuple:
+    """Return boxed image and extracted text with confidence filtering."""
+    if img is None:
+        return None, ""
+    
+    reader = load_ocr_reader()
+    if reader is None:
+        return img.copy(), ""
+    
+    proc = preprocess_image(img, sharpen=preprocess_opts["sharpen"], threshold=preprocess_opts["threshold"])
+    
+    try:
+        results = reader.readtext(proc)
+    except Exception:
+        results = []
+    
+    # Filter by confidence (0.3 = keep 30%+ confident detections)
+    min_confidence = 0.3
+    filtered_results = [(bbox, text, conf) for bbox, text, conf in results if conf >= min_confidence]
+    
+    # Extract high-quality text
+    extracted_texts = []
+    for bbox, text, conf in filtered_results:
+        clean = text.strip()
+        if clean and len(clean) > 1:
+            extracted_texts.append(clean)
+    
+    extracted = " ".join(extracted_texts)
+    
+    # Draw boxes with color-coded confidence
+    boxed = img.copy()
+    for (bbox, text, conf) in filtered_results:
+        p1, p2, p3, p4 = bbox
+        p1 = tuple(map(int, p1))
+        p3 = tuple(map(int, p3))
+        
+        # Color: green (≥70%), yellow (50-70%), red (<50%)
+        if conf >= 0.7:
+            color = (0, 255, 0)
+        elif conf >= 0.5:
+            color = (0, 255, 255)
+        else:
+            color = (0, 0, 255)
+        
+        cv2.rectangle(boxed, p1, p3, color, 2)
+        label = f"{text} ({conf:.2f})"
+        cv2.putText(boxed, label, (p1[0], max(p1[1]-8, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+    
+    return boxed, clean_text(extracted)
+```
+
+ADJUSTMENT OPTIONS:
+- min_confidence: Lower (0.1-0.2) for more sensitivity, higher (0.5-0.7) for stricter accuracy
+- blockSize in adaptiveThreshold: Higher (51-61) for more sensitivity, lower (21-31) for stricter
+- bilateralFilter d/sigma: Adjust for more/less noise reduction
