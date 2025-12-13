@@ -344,6 +344,24 @@ with left_col:
             st.image(boxed, caption="OCR bounding boxes", channels="BGR")
             # Insert OCR into raw_text (editable)
             st.session_state["raw_text"] = extracted
+            # Auto-translate OCR result to Malay when possible
+            if extracted.strip():
+                try:
+                    with st.spinner("Translating OCR → Malay..."):
+                        lang = detect_language(extracted)
+                        if lang == "en":
+                            malay = translate_en_to_malay(extracted)
+                        else:
+                            if lang == "ms" or lang == "id" or lang == "unknown":
+                                malay = extracted
+                            else:
+                                try:
+                                    malay = translate_en_to_malay(extracted)
+                                except Exception:
+                                    malay = extracted
+                        st.session_state["malay_text"] = malay
+                except Exception:
+                    st.session_state["malay_text"] = extracted
     elif mode == "Upload PDF":
         uploaded = st.file_uploader("Upload PDF", type=["pdf"])
         if uploaded:
@@ -354,6 +372,24 @@ with left_col:
             for i, im in enumerate(images):
                 st.image(im, caption=f"Page {i+1}", channels="BGR")
             st.session_state["raw_text"] = extracted
+            # Auto-translate OCR result to Malay when possible
+            if extracted.strip():
+                try:
+                    with st.spinner("Translating OCR → Malay..."):
+                        lang = detect_language(extracted)
+                        if lang == "en":
+                            malay = translate_en_to_malay(extracted)
+                        else:
+                            if lang == "ms" or lang == "id" or lang == "unknown":
+                                malay = extracted
+                            else:
+                                try:
+                                    malay = translate_en_to_malay(extracted)
+                                except Exception:
+                                    malay = extracted
+                        st.session_state["malay_text"] = malay
+                except Exception:
+                    st.session_state["malay_text"] = extracted
     elif mode == "Use Camera":
         camera_img = st.camera_input("Use camera to capture")
         if camera_img:
@@ -364,6 +400,24 @@ with left_col:
             boxed, extracted = ocr_image(img, preprocess_opts)
             st.image(boxed, caption="OCR bounding boxes", channels="BGR")
             st.session_state["raw_text"] = extracted
+            # Auto-translate OCR result to Malay when possible
+            if extracted.strip():
+                try:
+                    with st.spinner("Translating OCR → Malay..."):
+                        lang = detect_language(extracted)
+                        if lang == "en":
+                            malay = translate_en_to_malay(extracted)
+                        else:
+                            if lang == "ms" or lang == "id" or lang == "unknown":
+                                malay = extracted
+                            else:
+                                try:
+                                    malay = translate_en_to_malay(extracted)
+                                except Exception:
+                                    malay = extracted
+                        st.session_state["malay_text"] = malay
+                except Exception:
+                    st.session_state["malay_text"] = extracted
 
     # Manual input always available as editable Raw OCR Text
     st.markdown("### Raw OCR / Manual Text (editable)")
