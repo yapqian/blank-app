@@ -57,9 +57,11 @@ def load_summarizer():
     from transformers import pipeline
     return pipeline("summarization", model="google/mt5-small", device=0 if torch.cuda.is_available() else -1)
 
-reader = load_ocr_reader()
-translator_tok, translator_model = load_translator_model()
-summarizer = load_summarizer()
+# Don't load models at startup to avoid OOM on Streamlit Cloud
+# Models will be loaded on-demand via @st.cache_resource
+# reader = load_ocr_reader()
+# translator_tok, translator_model = load_translator_model()
+# summarizer = load_summarizer()
 
 # =========================
 # Translation function (EN -> MS)
@@ -68,6 +70,8 @@ def translate_en_to_malay(text: str, max_length: int = 512) -> str:
     text = text.strip()
     if text == "":
         return ""
+    # Load translator on-demand
+    translator_tok, translator_model = load_translator_model()
     # Some Seq2Seq Malay models expect a task prompt — nanot5 expects "terjemah ke Melayu: " prefix
     prefix = "terjemah ke Melayu: "
     input_text = prefix + text
@@ -106,6 +110,8 @@ def ocr_image(img: np.ndarray, preprocess_opts: dict) -> tuple:
     """Return boxed image (RGB/BGR) and extracted raw text (string)."""
     if img is None:
         return None, ""
+    # Load reader on-demand
+    reader = load_ocr_reader()
     proc = preprocess_image(img, sharpen=preprocess_opts["sharpen"], threshold=preprocess_opts["threshold"])
     # easyocr expects rgb or gray; provide processed image
     try:
@@ -255,6 +261,7 @@ with right_col:
         else:
             with st.spinner("Generating summary..."):
                 try:
+                    summarizer = load_summarizer()  # Load on-demand
                     summary = summarizer(malay_input, max_length=120, min_length=40, do_sample=False)[0]["summary_text"]
                 except Exception as e:
                     # fallback: summarize shorter text or just return first 300 chars
