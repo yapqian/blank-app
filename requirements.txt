@@ -33,3 +33,6 @@ Pillow==12.0.0
 smart_open==7.5.0
 wandb==0.23.0
 python-dotenv==1.0.1
+
+# Online translation fallback
+deep-translator>=1.8.0
