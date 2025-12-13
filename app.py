@@ -49,7 +49,14 @@ def load_translator_model():
     model_name = "mesolitica/nanot5-small-malaysian-translation-v2.1"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-    return tokenizer, model
+    # Move model to available device (GPU if available) for faster inference
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    try:
+        model.to(device)
+    except Exception:
+        # best-effort; if moving fails, continue on CPU
+        device = torch.device("cpu")
+    return tokenizer, model, device
 
 @st.cache_resource(show_spinner=False)
 def load_summarizer():
@@ -72,13 +79,72 @@ def translate_en_to_malay(text: str, max_length: int = 512) -> str:
     if text == "":
         return ""
     # Load translator on-demand
-    translator_tok, translator_model = load_translator_model()
+    try:
+        translator_tok, translator_model, device = load_translator_model()
+    except Exception as e:
+        # If loading the heavy model fails, return original text as a fallback
+        return text
+
     # Some Seq2Seq Malay models expect a task prompt — nanot5 expects "terjemah ke Melayu: " prefix
     prefix = "terjemah ke Melayu: "
     input_text = prefix + text
-    inputs = translator_tok.encode(input_text, return_tensors="pt", truncation=True, max_length=max_length)
-    outputs = translator_model.generate(inputs, max_length=512, num_beams=4, early_stopping=True)
-    translated = translator_tok.decode(outputs[0], skip_special_tokens=True)
+
+    # Helper: chunk long input into sentence-based pieces to avoid token limit/OOM
+    def _chunk_text_for_translation(s: str, tokenizer, max_len: int):
+        import re
+        s = s.strip()
+        if not s:
+            return []
+        # split by sentence endings
+        sents = re.split(r'(?<=[.!?])\s+', s)
+        chunks = []
+        cur = ""
+        for sent in sents:
+            cand = (cur + " " + sent).strip() if cur else sent
+            # estimate token length using tokenizer
+            try:
+                tok_len = len(tokenizer.encode(cand, add_special_tokens=False))
+            except Exception:
+                tok_len = len(cand.split())
+            if tok_len <= max_len - 16:
+                cur = cand
+            else:
+                if cur:
+                    chunks.append(cur)
+                # if single sentence too long, truncate by characters as last resort
+                try:
+                    sent_len = len(tokenizer.encode(sent, add_special_tokens=False))
+                except Exception:
+                    sent_len = len(sent.split())
+                if sent_len > max_len - 16:
+                    chunks.append(sent[: max_len * 2])
+                    cur = ""
+                else:
+                    cur = sent
+        if cur:
+            chunks.append(cur)
+        return chunks
+
+    max_len = max_length
+    chunks = _chunk_text_for_translation(input_text, translator_tok, max_len)
+    if not chunks:
+        return ""
+
+    translated_parts = []
+    for chunk in chunks:
+        try:
+            inputs = translator_tok(chunk, return_tensors="pt", truncation=True, max_length=max_len)
+            # move inputs to device
+            for k, v in inputs.items():
+                inputs[k] = v.to(device)
+            outputs = translator_model.generate(**inputs, max_length=max_len, num_beams=4, early_stopping=True, no_repeat_ngram_size=2)
+            out = translator_tok.decode(outputs[0], skip_special_tokens=True)
+            translated_parts.append(out)
+        except Exception:
+            # fallback: append raw chunk
+            translated_parts.append(chunk)
+
+    translated = " ".join(translated_parts)
     return translated
 
 # =========================
