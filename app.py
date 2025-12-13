@@ -7,7 +7,6 @@ from PIL import Image
 from pdf2image import convert_from_bytes
 from langdetect import detect
 import re
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
 
 # =========================
@@ -45,6 +44,7 @@ def load_ocr_reader():
 @st.cache_resource(show_spinner=False)
 def load_translator_model():
     # EN -> MS translation model (mesolitica nanot5-small-malaysian-translation)
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
     model_name = "mesolitica/nanot5-small-malaysian-translation-v2.1"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
@@ -54,6 +54,7 @@ def load_translator_model():
 def load_summarizer():
     # multilingual summarizer (mT5 small) — works for Malay reasonably
     # Note: smaller models are faster but less fluent; change if you prefer another.
+    from transformers import pipeline
     return pipeline("summarization", model="google/mt5-small", device=0 if torch.cuda.is_available() else -1)
 
 reader = load_ocr_reader()
