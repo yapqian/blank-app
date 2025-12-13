@@ -1,0 +1,28 @@
+{
+  "os": "Linux-6.8.0-1030-azure-x86_64-with-glibc2.31",
+  "python": "CPython 3.11.13",
+  "startedAt": "2025-12-02T09:53:25.160970Z",
+  "program": "/workspaces/blank-app/train_gnn.py",
+  "codePath": "train_gnn.py",
+  "codePathLocal": "train_gnn.py",
+  "git": {
+    "remote": "https://github.com/yapqian/blank-app",
+    "commit": "edbcdf9b790a2e1896f1d6da6b022629303d396e"
+  },
+  "email": "yapqian021028141853@gmail.com",
+  "root": "/workspaces/blank-app",
+  "host": "codespaces-0dde8d",
+  "executable": "/usr/local/bin/python",
+  "cpu_count": 1,
+  "cpu_count_logical": 2,
+  "disk": {
+    "/": {
+      "total": "33636024320",
+      "used": "17283657728"
+    }
+  },
+  "memory": {
+    "total": "8330579968"
+  },
+  "writerId": "zjakn4r8c5knuqk73he65lenx3zizw4t"
+}

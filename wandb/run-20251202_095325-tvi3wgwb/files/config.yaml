@@ -1,0 +1,51 @@
+_wandb:
+    value:
+        cli_version: 0.23.0
+        e:
+            zjakn4r8c5knuqk73he65lenx3zizw4t:
+                codePath: train_gnn.py
+                codePathLocal: train_gnn.py
+                cpu_count: 1
+                cpu_count_logical: 2
+                disk:
+                    /:
+                        total: "33636024320"
+                        used: "17283657728"
+                email: yapqian021028141853@gmail.com
+                executable: /usr/local/bin/python
+                git:
+                    commit: edbcdf9b790a2e1896f1d6da6b022629303d396e
+                    remote: https://github.com/yapqian/blank-app
+                host: codespaces-0dde8d
+                memory:
+                    total: "8330579968"
+                os: Linux-6.8.0-1030-azure-x86_64-with-glibc2.31
+                program: /workspaces/blank-app/train_gnn.py
+                python: CPython 3.11.13
+                root: /workspaces/blank-app
+                startedAt: "2025-12-02T09:53:25.160970Z"
+                writerId: zjakn4r8c5knuqk73he65lenx3zizw4t
+        m: []
+        python_version: 3.11.13
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 77
+            "2":
+                - 1
+                - 5
+                - 11
+                - 49
+                - 53
+                - 77
+            "3":
+                - 13
+            "4": 3.11.13
+            "5": 0.23.0
+            "6": 4.57.3
+            "12": 0.23.0
+            "13": linux-x86_64
