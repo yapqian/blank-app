@@ -44,11 +44,20 @@ def load_ocr_reader():
 
 @st.cache_resource(show_spinner=False)
 def load_translator_model():
-    # EN -> MS translation model (mesolitica nanot5-small-malaysian-translation)
-    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-    model_name = "mesolitica/nanot5-small-malaysian-translation-v2.1"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    # Prefer a stable MarianMT model for EN->MS, fallback to NanoT5 if Marian unavailable
+    try:
+        from transformers import MarianTokenizer, MarianMTModel
+        model_name = "Helsinki-NLP/opus-mt-en-ms"
+        tokenizer = MarianTokenizer.from_pretrained(model_name)
+        model = MarianMTModel.from_pretrained(model_name)
+        model_type = "marian"
+    except Exception:
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+        model_name = "mesolitica/nanot5-small-malaysian-translation-v2.1"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        model_type = "seq2seq"
+
     # Move model to available device (GPU if available) for faster inference
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     try:
@@ -56,7 +65,7 @@ def load_translator_model():
     except Exception:
         # best-effort; if moving fails, continue on CPU
         device = torch.device("cpu")
-    return tokenizer, model, device
+    return tokenizer, model, device, model_type
 
 @st.cache_resource(show_spinner=False)
 def load_summarizer():
@@ -80,14 +89,26 @@ def translate_en_to_malay(text: str, max_length: int = 512) -> str:
         return ""
     # Load translator on-demand
     try:
-        translator_tok, translator_model, device = load_translator_model()
-    except Exception as e:
+        translator_tok, translator_model, device, model_type = load_translator_model()
+    except Exception:
         # If loading the heavy model fails, return original text as a fallback
         return text
 
-    # Some Seq2Seq Malay models expect a task prompt — nanot5 expects "terjemah ke Melayu: " prefix
-    prefix = "terjemah ke Melayu: "
-    input_text = prefix + text
+    # Choose prompt candidates depending on model type. MarianMT doesn't need prompts.
+    if model_type == "marian":
+        prompt_candidates = [""]
+    else:
+        # Try several prompt prefixes — some seq2seq models expect a task prefix
+        prompt_candidates = [
+            "terjemah ke Melayu: ",
+            "Terjemahkan ke Bahasa Melayu: ",
+            "translate English to Malay: ",
+            "translate to Malay: ",
+            "",
+        ]
+
+    def _apply_prefix(pfx, s):
+        return (pfx + s).strip() if pfx else s
 
     # Helper: chunk long input into sentence-based pieces to avoid token limit/OOM
     def _chunk_text_for_translation(s: str, tokenizer, max_len: int):
@@ -126,26 +147,66 @@ def translate_en_to_malay(text: str, max_length: int = 512) -> str:
         return chunks
 
     max_len = max_length
-    chunks = _chunk_text_for_translation(input_text, translator_tok, max_len)
-    if not chunks:
-        return ""
 
-    translated_parts = []
-    for chunk in chunks:
-        try:
-            inputs = translator_tok(chunk, return_tensors="pt", truncation=True, max_length=max_len)
-            # move inputs to device
-            for k, v in inputs.items():
-                inputs[k] = v.to(device)
-            outputs = translator_model.generate(**inputs, max_length=max_len, num_beams=4, early_stopping=True, no_repeat_ngram_size=2)
-            out = translator_tok.decode(outputs[0], skip_special_tokens=True)
-            translated_parts.append(out)
-        except Exception:
-            # fallback: append raw chunk
-            translated_parts.append(chunk)
+    def _is_translated(orig: str, cand: str) -> bool:
+        # Heuristic: if candidate shares too many words with original, consider it untranslated
+        import re
+        def _words(s):
+            return set(re.findall(r"\w+", s.lower()))
+        o = _words(orig)
+        c = _words(cand)
+        if not o:
+            return True
+        overlap = len(o & c) / max(1, len(o))
+        return overlap < 0.5
 
-    translated = " ".join(translated_parts)
-    return translated
+    def _strip_prompt_prefix(s: str):
+        # remove any known prompt prefixes that the model may have echoed
+        for p in prompt_candidates:
+            if not p:
+                continue
+            if s.startswith(p):
+                return s[len(p) :].strip()
+        return s
+
+    # Try each prompt candidate until one produces a translated result
+    for pfx in prompt_candidates:
+        input_text = _apply_prefix(pfx, text)
+        chunks = _chunk_text_for_translation(input_text, translator_tok, max_len)
+        if not chunks:
+            continue
+
+        translated_parts = []
+        success = True
+        for chunk in chunks:
+            try:
+                inputs = translator_tok(chunk, return_tensors="pt", truncation=True, max_length=max_len)
+                # move inputs to device
+                for k, v in inputs.items():
+                    inputs[k] = v.to(device)
+                outputs = translator_model.generate(**inputs, max_length=max_len, num_beams=4, early_stopping=True, no_repeat_ngram_size=2)
+                out = translator_tok.decode(outputs[0], skip_special_tokens=True)
+                out = _strip_prompt_prefix(out)
+                translated_parts.append(out)
+            except Exception:
+                success = False
+                break
+
+        if not success:
+            continue
+
+        candidate = " ".join(translated_parts).strip()
+        if _is_translated(text, candidate):
+            # candidate looks translated (low overlap)
+            return candidate
+
+    # All attempts failed — return the original text as fallback
+    # Try a lightweight online fallback (deep_translator) before giving up
+    try:
+        from deep_translator import GoogleTranslator
+        return GoogleTranslator(source='auto', target='ms').translate(text)
+    except Exception:
+        return text
 
 # =========================
 # Preprocessing helpers
