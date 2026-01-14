@@ -129,6 +129,60 @@ def predict_news(text: str) -> str:
     return "🟢 Likely REAL (Heuristic)"
 
 # =========================
+# The Inference Logic (The "Bridge")
+# =========================
+from gensim.models.doc2vec import Doc2Vec
+from torch_geometric.data import Data
+from sklearn.metrics.pairwise import cosine_similarity
+
+# --- Load GNN Components ---
+@st.cache_resource
+def load_gnn_assets():
+    # 1. Load Doc2Vec
+    d2v = Doc2Vec.load("models/doc2vec_model.d2v")
+    
+    # 2. Load the GAT Model Architecture
+    from gat_model import GAT # Assumes you saved the GAT class in gat_model.py
+    model = GAT(in_dim=100, hid_dim=128, out_dim=2)
+    model.load_state_dict(torch.load("models/gat_fake_news.pt", map_location="cpu"))
+    model.eval()
+    
+    # 3. Load the Training Graph (to find neighbors)
+    train_data = torch.load("models/fake_news_data_object3.pt", map_location="cpu")
+    
+    return d2v, model, train_data
+
+def predict_news(text: str) -> str:
+    d2v, gat, train_data = load_gnn_assets()
+    
+    # Step 1: Vectorize input
+    new_vec = d2v.infer_vector(text.split()).reshape(1, -1)
+    
+    # Step 2: Find 5 nearest neighbors in the existing graph
+    # We compare the new vector against the 'x' (embeddings) in our saved graph
+    sims = cosine_similarity(new_vec, train_data.x.numpy())
+    top_k_idx = np.argsort(-sims[0])[:5]
+    
+    # Step 3: Create a mini-graph for inference
+    # Node 0 is the new node, Nodes 1-5 are neighbors
+    combined_x = torch.cat([torch.tensor(new_vec), train_data.x[top_k_idx]], dim=0)
+    
+    # Connect new node (0) to neighbors (1-5) and vice versa
+    rows = np.array([0, 0, 0, 0, 0, 1, 2, 3, 4, 5])
+    cols = np.array([1, 2, 3, 4, 5, 0, 0, 0, 0, 0])
+    edge_index = torch.tensor([rows, cols], dtype=torch.long)
+    
+    # Step 4: Run GAT
+    with torch.no_grad():
+        out = gat(combined_x, edge_index)
+        prediction = out[0].argmax().item() # Get result for node 0
+        prob = torch.softmax(out[0], dim=0)[prediction].item()
+
+    if prediction == 1:
+        return f"🔴 Likely FAKE ({prob:.1%} confidence)"
+    return f"🟢 Likely REAL ({prob:.1%} confidence)"
+
+# =========================
 # UI Layout
 # =========================
 st.sidebar.header("OCR Settings")
