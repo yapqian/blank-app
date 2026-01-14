@@ -1,3 +1,5 @@
+import gc
+import torch
 import streamlit as st
 import easyocr
 import numpy as np
@@ -6,7 +8,14 @@ from PIL import Image
 from pdf2image import convert_from_bytes
 from langdetect import detect
 import re
-import torch
+from gensim.models.doc2vec import Doc2Vec
+from torch_geometric.data import Data
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Memory Management
+gc.collect()
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
 
 # =========================
 # Page config
@@ -63,6 +72,22 @@ def load_translator_model():
 def load_summarizer():
     from transformers import pipeline
     return pipeline("summarization", model="google/mt5-small", device=0 if torch.cuda.is_available() else -1)
+
+@st.cache_resource(show_spinner=False)
+def load_gnn_assets():
+    # 1. Load Doc2Vec
+    d2v = Doc2Vec.load("models/doc2vec_model.d2v")
+    
+    # 2. Load the GAT Model Architecture
+    from gat_model import GAT 
+    model = GAT(in_dim=100, hid_dim=128, out_dim=2)
+    model.load_state_dict(torch.load("models/gat_fake_news.pt", map_location="cpu"))
+    model.eval()
+    
+    # 3. Load the Training Graph (to find neighbors)
+    train_data = torch.load("models/fake_news_data_object3.pt", map_location="cpu")
+    
+    return d2v, model, train_data
 
 # =========================
 # Processing Functions
@@ -121,37 +146,9 @@ def translate_en_to_malay(text: str) -> str:
         from deep_translator import GoogleTranslator
         return GoogleTranslator(source='auto', target='ms').translate(text)
 
-def predict_news(text: str) -> str:
-    # Placeholder for GNN
-    t = text.lower()
-    if any(word in t for word in ["palsu", "bohong", "gempar", "vaksin"]):
-        return "🔴 Likely FAKE (Heuristic)"
-    return "🟢 Likely REAL (Heuristic)"
-
 # =========================
-# The Inference Logic (The "Bridge")
+# GNN Prediction Logic
 # =========================
-from gensim.models.doc2vec import Doc2Vec
-from torch_geometric.data import Data
-from sklearn.metrics.pairwise import cosine_similarity
-
-# --- Load GNN Components ---
-@st.cache_resource
-def load_gnn_assets():
-    # 1. Load Doc2Vec
-    d2v = Doc2Vec.load("models/doc2vec_model.d2v")
-    
-    # 2. Load the GAT Model Architecture
-    from gat_model import GAT # Assumes you saved the GAT class in gat_model.py
-    model = GAT(in_dim=100, hid_dim=128, out_dim=2)
-    model.load_state_dict(torch.load("models/gat_fake_news.pt", map_location="cpu"))
-    model.eval()
-    
-    # 3. Load the Training Graph (to find neighbors)
-    train_data = torch.load("models/fake_news_data_object3.pt", map_location="cpu")
-    
-    return d2v, model, train_data
-
 def predict_news(text: str) -> str:
     d2v, gat, train_data = load_gnn_assets()
     
@@ -159,15 +156,11 @@ def predict_news(text: str) -> str:
     new_vec = d2v.infer_vector(text.split()).reshape(1, -1)
     
     # Step 2: Find 5 nearest neighbors in the existing graph
-    # We compare the new vector against the 'x' (embeddings) in our saved graph
     sims = cosine_similarity(new_vec, train_data.x.numpy())
     top_k_idx = np.argsort(-sims[0])[:5]
     
-    # Step 3: Create a mini-graph for inference
-    # Node 0 is the new node, Nodes 1-5 are neighbors
+    # Step 3: Create a mini-graph
     combined_x = torch.cat([torch.tensor(new_vec), train_data.x[top_k_idx]], dim=0)
-    
-    # Connect new node (0) to neighbors (1-5) and vice versa
     rows = np.array([0, 0, 0, 0, 0, 1, 2, 3, 4, 5])
     cols = np.array([1, 2, 3, 4, 5, 0, 0, 0, 0, 0])
     edge_index = torch.tensor([rows, cols], dtype=torch.long)
@@ -175,12 +168,18 @@ def predict_news(text: str) -> str:
     # Step 4: Run GAT
     with torch.no_grad():
         out = gat(combined_x, edge_index)
-        prediction = out[0].argmax().item() # Get result for node 0
-        prob = torch.softmax(out[0], dim=0)[prediction].item()
+        probs = torch.softmax(out[0], dim=0)
+        prediction = probs.argmax().item()
+        confidence = probs[prediction].item()
 
-    if prediction == 1:
-        return f"🔴 Likely FAKE ({prob:.1%} confidence)"
-    return f"🟢 Likely REAL ({prob:.1%} confidence)"
+    if prediction == 1: # Assuming 1 = Fake
+        st.error(f"### Result: LIKELY FAKE")
+        st.progress(confidence)
+        return f"The GNN model is {confidence:.1%} confident this content is misinformation based on semantic neighbors."
+    else:
+        st.success(f"### Result: LIKELY REAL")
+        st.progress(confidence)
+        return f"The GNN model is {confidence:.1%} confident this content is authentic."
 
 # =========================
 # UI Layout
@@ -199,8 +198,6 @@ left_col, right_col = st.columns(2)
 with left_col:
     st.subheader("1. Input / OCR")
     
-    # Process Uploads
-    extracted = ""
     if mode == "Upload Image":
         up = st.file_uploader("Image", type=["png","jpg","jpeg"])
         if up:
@@ -223,7 +220,6 @@ with left_col:
             boxed, extracted = ocr_image(img, {"sharpen": sharpen, "threshold": threshold})
             st.session_state["raw_text"] = extracted
 
-    # Editable Raw Box
     st.markdown("### Raw OCR / Manual Text (Editable)")
     edited_raw = st.text_area("Edit text here:", value=st.session_state["raw_text"], height=250, key="main_raw")
     st.session_state["raw_text"] = edited_raw
@@ -257,10 +253,10 @@ with right_col:
 
     if st.button("Analyze Fake News"):
         if current_malay.strip():
-            res = predict_news(current_malay)
-            st.subheader("Result")
-            st.success(res)
+            with st.spinner("Running GNN Analysis..."):
+                res = predict_news(current_malay)
+                st.write(res)
         else: st.warning("Empty Malay box.")
 
 st.markdown("---")
-st.caption("Status: GNN Model pending integration. Currently using heuristic detection.")
+st.caption("Status: GNN Model fully integrated (GATv2 + Doc2Vec Inductive Inference).")

@@ -1,38 +1,25 @@
-# Core dependencies for Fake News Detection App with OCR + NLP
+# Core Streamlit and Utilities
+streamlit
+pandas
+numpy
+pillow
+langdetect
+re-sdk
+deep_translator
 
-# Web framework
-streamlit==1.51.0
+# Image & PDF Processing
+easyocr
+opencv-python-headless
+pdf2image
 
-# NLP & text processing
-gensim==4.4.0
-nltk==3.9.2
-networkx==3.6
-scikit-learn==1.7.2
-transformers==4.57.3
-langdetect==1.0.9
+# Machine Learning & NLP
+torch
+torchvision
+transformers
+gensim
+scikit-learn
 
-# Machine Learning & PyTorch
-torch==2.4.0
-torchvision==0.19.0
-torchaudio==2.4.0
-torch-geometric==2.7.0
-
-# Data & visualization
-pandas==2.3.3
-numpy==2.2.6
-matplotlib==3.10.7
-tqdm==4.67.1
-
-# OCR & image processing
-easyocr==1.7.2
-opencv-python-headless==4.12.0.88
-pdf2image==1.17.0
-Pillow==12.0.0
-
-# Utilities
-smart_open==7.5.0
-wandb==0.23.0
-python-dotenv==1.0.1
-
-# Online translation fallback
-deep-translator>=1.8.0
+# Graph Neural Network (PyG)
+torch-geometric
+# Note: PyG dependencies are usually handled automatically by modern pip, 
+# but if deployment fails, we may need to specify torch-scatter and torch-sparse.
