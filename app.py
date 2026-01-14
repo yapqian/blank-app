@@ -20,9 +20,9 @@ if torch.cuda.is_available():
 # =========================
 # Page config
 # =========================
-st.set_page_config(page_title="OCR + EN→MS Translator + Summarizer", layout="wide")
-st.title("📰 OCR → Translate (EN→MS) → Summarize → Fake-News")
-st.write("Mode: Upload Image / PDF / Camera. Edit Raw text, then Translate to Malay.")
+st.set_page_config(page_title="OCR + Translation + Auto-Summary", layout="wide")
+st.title("📰 OCR → Auto-Translate & Summarize → Fake-News")
+st.write("Mode: Upload Image / PDF / Camera. Edit Raw text, then Translate & Summarize automatically.")
 
 # =========================
 # Helpers / Utilities
@@ -71,22 +71,17 @@ def load_translator_model():
 @st.cache_resource(show_spinner=False)
 def load_summarizer():
     from transformers import pipeline
+    # mT5 is excellent for multilingual (Malay) abstractive summarization
     return pipeline("summarization", model="google/mt5-small", device=0 if torch.cuda.is_available() else -1)
 
 @st.cache_resource(show_spinner=False)
 def load_gnn_assets():
-    # 1. Load Doc2Vec
-    d2v = Doc2Vec.load("models/doc2vec_model.d2v")
-    
-    # 2. Load the GAT Model Architecture
     from gat_model import GAT 
+    d2v = Doc2Vec.load("models/doc2vec_model.d2v")
     model = GAT(in_dim=100, hid_dim=128, out_dim=2)
     model.load_state_dict(torch.load("models/gat_fake_news.pt", map_location="cpu"))
     model.eval()
-    
-    # 3. Load the Training Graph (to find neighbors)
     train_data = torch.load("models/fake_news_data_object3.pt", map_location="cpu")
-    
     return d2v, model, train_data
 
 # =========================
@@ -110,7 +105,6 @@ def ocr_image(img: np.ndarray, preprocess_opts: dict) -> tuple:
     if reader is None: return img.copy(), ""
     proc = preprocess_image(img, sharpen=preprocess_opts["sharpen"], threshold=preprocess_opts["threshold"])
     results = reader.readtext(proc)
-    
     extracted_texts = []
     boxed = img.copy()
     for (bbox, text, conf) in results:
@@ -120,13 +114,11 @@ def ocr_image(img: np.ndarray, preprocess_opts: dict) -> tuple:
             p1, p3 = tuple(map(int, p1)), tuple(map(int, p3))
             color = (0, 255, 0) if conf >= 0.7 else (0, 255, 255)
             cv2.rectangle(boxed, p1, p3, color, 2)
-    
     return boxed, clean_text(" ".join(extracted_texts))
 
 def ocr_pdf_bytes(file_bytes, preprocess_opts):
     pages = convert_from_bytes(file_bytes)
-    full_text = ""
-    images_with_boxes = []
+    full_text, images_with_boxes = "", []
     for page in pages:
         page_np = np.array(page)
         page_bgr = cv2.cvtColor(page_np, cv2.COLOR_RGB2BGR)
@@ -146,40 +138,27 @@ def translate_en_to_malay(text: str) -> str:
         from deep_translator import GoogleTranslator
         return GoogleTranslator(source='auto', target='ms').translate(text)
 
-# =========================
-# GNN Prediction Logic
-# =========================
 def predict_news(text: str) -> str:
     d2v, gat, train_data = load_gnn_assets()
-    
-    # Step 1: Vectorize input
     new_vec = d2v.infer_vector(text.split()).reshape(1, -1)
-    
-    # Step 2: Find 5 nearest neighbors in the existing graph
     sims = cosine_similarity(new_vec, train_data.x.numpy())
     top_k_idx = np.argsort(-sims[0])[:5]
-    
-    # Step 3: Create a mini-graph
     combined_x = torch.cat([torch.tensor(new_vec), train_data.x[top_k_idx]], dim=0)
-    rows = np.array([0, 0, 0, 0, 0, 1, 2, 3, 4, 5])
-    cols = np.array([1, 2, 3, 4, 5, 0, 0, 0, 0, 0])
+    rows = np.array([0, 0, 0, 0, 0, 1, 2, 3, 4, 5]); cols = np.array([1, 2, 3, 4, 5, 0, 0, 0, 0, 0])
     edge_index = torch.tensor([rows, cols], dtype=torch.long)
-    
-    # Step 4: Run GAT
     with torch.no_grad():
         out = gat(combined_x, edge_index)
         probs = torch.softmax(out[0], dim=0)
         prediction = probs.argmax().item()
         confidence = probs[prediction].item()
-
-    if prediction == 1: # Assuming 1 = Fake
+    if prediction == 1:
         st.error(f"### Result: LIKELY FAKE")
         st.progress(confidence)
-        return f"The GNN model is {confidence:.1%} confident this content is misinformation based on semantic neighbors."
+        return f"GNN Prediction: Misinformation ({confidence:.1%} confidence)."
     else:
         st.success(f"### Result: LIKELY REAL")
         st.progress(confidence)
-        return f"The GNN model is {confidence:.1%} confident this content is authentic."
+        return f"GNN Prediction: Authentic ({confidence:.1%} confidence)."
 
 # =========================
 # UI Layout
@@ -191,72 +170,21 @@ mode = st.sidebar.radio("Input mode", ["Manual Only", "Upload Image", "Upload PD
 
 if "raw_text" not in st.session_state: st.session_state["raw_text"] = ""
 if "malay_text" not in st.session_state: st.session_state["malay_text"] = ""
+if "summary_text" not in st.session_state: st.session_state["summary_text"] = ""
 
 left_col, right_col = st.columns(2)
 
-# ---------- LEFT COLUMN ----------
 with left_col:
     st.subheader("1. Input / OCR")
-    
     if mode == "Upload Image":
         up = st.file_uploader("Image", type=["png","jpg","jpeg"])
         if up:
             img = np.array(Image.open(up).convert("RGB"))
-            boxed, extracted = ocr_image(img, {"sharpen": sharpen, "threshold": threshold})
+            boxed, ext = ocr_image(img, {"sharpen": sharpen, "threshold": threshold})
             st.image(boxed, caption="OCR Result", channels="BGR")
-            st.session_state["raw_text"] = extracted
-
+            st.session_state["raw_text"] = ext
     elif mode == "Upload PDF":
         up = st.file_uploader("PDF", type=["pdf"])
         if up:
-            imgs, extracted = ocr_pdf_bytes(up.read(), {"sharpen": sharpen, "threshold": threshold})
-            st.image(imgs[0], caption="Page 1 Preview", channels="BGR")
-            st.session_state["raw_text"] = extracted
-
-    elif mode == "Use Camera":
-        cam = st.camera_input("Capture")
-        if cam:
-            img = np.array(Image.open(cam).convert("RGB"))
-            boxed, extracted = ocr_image(img, {"sharpen": sharpen, "threshold": threshold})
-            st.session_state["raw_text"] = extracted
-
-    st.markdown("### Raw OCR / Manual Text (Editable)")
-    edited_raw = st.text_area("Edit text here:", value=st.session_state["raw_text"], height=250, key="main_raw")
-    st.session_state["raw_text"] = edited_raw
-
-    if st.button("Translate → Malay", type="primary"):
-        if not edited_raw.strip():
-            st.warning("No text to translate.")
-        else:
-            with st.spinner("Translating..."):
-                lang = detect_language(edited_raw)
-                res = translate_en_to_malay(edited_raw) if lang == "en" else edited_raw
-                st.session_state["malay_text"] = res
-                st.rerun()
-
-# ---------- RIGHT COLUMN ----------
-with right_col:
-    st.subheader("2. Final Text & Analysis")
-    
-    current_malay = st.text_area("Malay text for analysis:", value=st.session_state["malay_text"], height=250, key="main_malay")
-    st.session_state["malay_text"] = current_malay
-
-    if st.button("Summarize Text"):
-        if current_malay.strip():
-            with st.spinner("Summarizing..."):
-                try:
-                    summ = load_summarizer()
-                    res = summ(current_malay, max_length=100, min_length=30)[0]['summary_text']
-                    st.info(f"**Summary:** {res}")
-                except: st.error("Summarization failed.")
-        else: st.warning("Empty Malay box.")
-
-    if st.button("Analyze Fake News"):
-        if current_malay.strip():
-            with st.spinner("Running GNN Analysis..."):
-                res = predict_news(current_malay)
-                st.write(res)
-        else: st.warning("Empty Malay box.")
-
-st.markdown("---")
-st.caption("Status: GNN Model fully integrated (GATv2 + Doc2Vec Inductive Inference).")
+            imgs, ext = ocr_pdf_bytes(up.read(), {"sharpen": sharpen, "threshold": threshold})
+            st.image(imgs[0], caption="Page 1 Preview
