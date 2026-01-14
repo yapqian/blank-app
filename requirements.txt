@@ -1,25 +1,14 @@
-# Core Streamlit and Utilities
 streamlit
-pandas
-numpy
-pillow
-langdetect
-re-sdk
-deep_translator
-
-# Image & PDF Processing
 easyocr
+numpy
 opencv-python-headless
+Pillow
 pdf2image
-
-# Machine Learning & NLP
+langdetect
+transformers
 torch
 torchvision
-transformers
 gensim
 scikit-learn
-
-# Graph Neural Network (PyG)
 torch-geometric
-# Note: PyG dependencies are usually handled automatically by modern pip, 
-# but if deployment fails, we may need to specify torch-scatter and torch-sparse.
+deep_translator
