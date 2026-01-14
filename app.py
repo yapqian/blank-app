@@ -187,4 +187,52 @@ with left_col:
         up = st.file_uploader("PDF", type=["pdf"])
         if up:
             imgs, ext = ocr_pdf_bytes(up.read(), {"sharpen": sharpen, "threshold": threshold})
-            st.image(imgs[0], caption="Page 1 Preview
+            st.image(imgs[0], caption="Page 1 Preview", channels="BGR")
+            st.session_state["raw_text"] = ext
+    elif mode == "Use Camera":
+        cam = st.camera_input("Capture")
+        if cam:
+            img = np.array(Image.open(cam).convert("RGB"))
+            boxed, ext = ocr_image(img, {"sharpen": sharpen, "threshold": threshold})
+            st.session_state["raw_text"] = ext
+
+    st.markdown("### Raw OCR / Manual Text")
+    edited_raw = st.text_area("Edit text here:", value=st.session_state["raw_text"], height=200, key="main_raw")
+    st.session_state["raw_text"] = edited_raw
+
+    if st.button("Translate & Auto-Summarize", type="primary"):
+        if not edited_raw.strip():
+            st.warning("No text to process.")
+        else:
+            with st.spinner("Processing..."):
+                # Step 1: Translate
+                lang = detect_language(edited_raw)
+                m_text = translate_en_to_malay(edited_raw) if lang == "en" else edited_raw
+                st.session_state["malay_text"] = m_text
+                # Step 2: Auto-Summarize
+                try:
+                    summ_pipe = load_summarizer()
+                    s_res = summ_pipe(m_text, max_length=100, min_length=30, do_sample=False, num_beams=4, early_stopping=True)[0]['summary_text']
+                    st.session_state["summary_text"] = s_res
+                except:
+                    st.session_state["summary_text"] = "Summarization skipped (text too short or error)."
+                st.rerun()
+
+with right_col:
+    st.subheader("2. Final Text & Analysis")
+    current_malay = st.text_area("Malay Translation:", value=st.session_state["malay_text"], height=200, key="main_malay")
+    st.session_state["malay_text"] = current_malay
+
+    if st.session_state["summary_text"]:
+        st.info(f"**Auto-Summary (Malay):**\n\n{st.session_state['summary_text']}")
+
+    st.write("---")
+    if st.button("Analyze Fake News"):
+        if current_malay.strip():
+            with st.spinner("GNN Analyzing..."):
+                res = predict_news(current_malay)
+                st.write(res)
+        else: st.warning("No Malay text to analyze.")
+
+st.markdown("---")
+st.caption("Status: GNN Model fully integrated (GATv2 + Doc2Vec Inductive Inference).")
