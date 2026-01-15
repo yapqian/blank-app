@@ -1,27 +1,29 @@
 
 [     UTC     ] Logs for sdp2model.streamlit.app/
 ────────────────────────────────────────────────────────────────────────────────────────
-[07:51:50] 🚀 Starting up repository: 'blank-app', branch: 'main', main module: 'streamlit_app.py'
-[07:51:50] 🐙 Cloning repository...
-[07:52:00] 🐙 Cloning into '/mount/src/blank-app'...
+[08:04:50] 🖥 Provisioning machine...
+[08:04:50] 🎛 Preparing system...
+[08:04:50] ⛓ Spinning up manager process...
+[08:04:50] 🚀 Starting up repository: 'blank-app', branch: 'main', main module: 'streamlit_app.py'
+[08:04:50] 🐙 Cloning repository...
+[08:04:53] 🐙 Cloning into '/mount/src/blank-app'...
 
-[07:52:00] 🐙 Cloned repository!
-[07:52:00] 🐙 Pulling code changes from Github...
-[07:52:01] 📦 Processing dependencies...
-[07:52:01] 📦 Apt dependencies were installed from /mount/src/blank-app/packages.txt using apt-get.
+[08:04:53] 🐙 Cloned repository!
+[08:04:53] 🐙 Pulling code changes from Github...
+[08:04:54] 📦 Processing dependencies...
+[08:04:54] 📦 Apt dependencies were installed from /mount/src/blank-app/packages.txt using apt-get.
 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [48.0 kB]
-Get:4 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
-Get:5 http://deb.debian.org/debian bookworm/main amd64 Packages [8792 kB]
+Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8792 kB]
+Get:5 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [291 kB]
-Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [64.4 kB]
-Get:8 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [220 kB]
-Fetched 9625 kB in 1s (8209 kB/s)
-Reading package lists...[2026-01-15 07:52:03.400570] 
-Reading package lists...[2026-01-15 07:52:04.062499] 
-Building dependency tree...[2026-01-15 07:52:04.285960] 
-Reading state information...[2026-01-15 07:52:04.286296] 
+Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [220 kB]
+Get:8 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [64.4 kB]
+Fetched 9625 kB in 1s (7546 kB/s)
+Reading package lists...[2026-01-15 08:04:56.976935] 
+Building dependency tree...[2026-01-15 08:04:57.181614] 
+Reading state information...[2026-01-15 08:04:57.181932] 
 The following additional packages will be installed:
   fontconfig libarchive-dev libarchive13 libcairo2 libcurl3-nss
   libcurl4-nss-dev libdatrie1 libdrm-amdgpu1 libdrm-common libdrm-intel1
@@ -121,9 +123,9 @@ Get:62 http://deb.debian.org/debian bookworm/main amd64 tesseract-ocr-eng all 1:
 Get:63 http://deb.debian.org/debian bookworm/main amd64 tesseract-ocr-osd all 1:4.1.0-2 [2992 kB]
 Get:64 http://deb.debian.org/debian bookworm/main amd64 tesseract-ocr amd64 5.3.0-2 [402 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 61.4 MB in 0s (134 MB/s)
+Fetched 61.4 MB in 1s (67.4 MB/s)
 Selecting previously unselected package poppler-data.
-(Reading database ... [2026-01-15 07:52:05.593179] (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%[2026-01-15 07:52:05.611424] (Reading database ... 70%[2026-01-15 07:52:05.613612] (Reading database ... 75%[2026-01-15 07:52:05.614830] (Reading database ... 80%[2026-01-15 07:52:05.616923] (Reading database ... 85%[2026-01-15 07:52:05.618803] (Reading database ... 90%[2026-01-15 07:52:05.620178] (Reading database ... 95%[2026-01-15 07:52:05.622932] (Reading database ... 100%(Reading database ... 23146 files and directories currently installed.)
+(Reading database ... [2026-01-15 08:04:59.112273] (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%[2026-01-15 08:04:59.114531] (Reading database ... 70%[2026-01-15 08:04:59.115670] (Reading database ... 75%[2026-01-15 08:04:59.121231] (Reading database ... 80%[2026-01-15 08:04:59.122746] (Reading database ... 85%[2026-01-15 08:04:59.124365] (Reading database ... 90%[2026-01-15 08:04:59.126246] (Reading database ... 95%[2026-01-15 08:04:59.137670] (Reading database ... 100%(Reading database ... 23146 files and directories currently installed.)
 Preparing to unpack .../00-poppler-data_0.4.12-1_all.deb ...
 Unpacking poppler-data (0.4.12-1) ...
 Selecting previously unselected package fontconfig.
@@ -322,7 +324,7 @@ Setting up libpixman-1-0:amd64 (0.42.2-1) ...
 Setting up libx11-xcb1:amd64 (2:1.8.4-2+deb12u2) ...
 Setting up libpciaccess0:amd64 (0.17-2) ...
 Setting up fontconfig (2.14.1-4) ...
-Regenerating fonts cache... [2026-01-15 07:52:14.157470] done.
+Regenerating fonts cache... [2026-01-15 08:05:14.622830] done.
 Setting up libxcb-xfixes0:amd64 (1.15-1) ...
 Setting up libxrender1:amd64 (1:0.9.10-1.1) ...
 Setting up libdatrie1:amd64 (0.2.13-2+b1) ...
@@ -386,48 +388,18 @@ Processing triggers for libc-bin (2.36-9+deb12u13) ...
 
 Using uv pip install.
 Using Python 3.11.14 environment at /home/adminuser/venv
-Resolved 102 packages in 1.10s
-  × Failed to download and build `torch-scatter==2.1.2`
-  ├─▶ Build backend failed to determine requirements with `build_wheel()`
-  │   (exit status: 1)
-
-  │   [stderr]
-  │   Traceback (most recent call last):
-  │     File "<string>", line 14, in <module>
-  │     File
-  │   "/home/adminuser/.cache/uv/builds-v0/.tmpC3qcdD/lib/python3.11/site-packages/setuptools/build_meta.py",
-  │   line 331, in get_requires_for_build_wheel
-  │       return self._get_build_requires(config_settings, requirements=[])
-  │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  │     File
-  │   "/home/adminuser/.cache/uv/builds-v0/.tmpC3qcdD/lib/python3.11/site-packages/setuptools/build_meta.py",
-  │   line 301, in _get_build_requires
-  │       self.run_setup()
-  │     File
-  │   "/home/adminuser/.cache/uv/builds-v0/.tmpC3qcdD/lib/python3.11/site-packages/setuptools/build_meta.py",
-  │   line 512, in run_setup
-  │       super().run_setup(setup_script=setup_script)
-  │     File
-  │   "/home/adminuser/.cache/uv/builds-v0/.tmpC3qcdD/lib/python3.11/site-packages/setuptools/build_meta.py",
-  │   line 317, in run_setup
-  │       exec(code, locals())
-  │     File "<string>", line 8, in <module>
-  │   ModuleNotFoundError: No module named 'torch'
-
-  ╰─▶ This error likely indicates that torch-scatter@2.1.2 depends
-      on torch, but doesn't declare it as a build dependency. If
-      torch-scatter is a first-party package, consider adding torch to its
-      `build-system.requires`. Otherwise, `uv pip install torch` into the
-      environment and re-run with `--no-build-isolation`.
+error: Failed to read `--find-links` URL: https://data.pyg.org/whl/torch-2.9.1+cpu.html
+  Caused by: Failed to fetch: `https://data.pyg.org/whl/torch-2.9.1+cpu.html`
+  Caused by: HTTP status client error (403 Forbidden) for url (https://data.pyg.org/whl/torch-2.9.1+cpu.html)
 Checking if Streamlit is installed
 Installing rich for an improved exception logging
 Using uv pip install.
 Using Python 3.11.14 environment at /home/adminuser/venv
-Resolved 4 packages in 136ms
-Prepared 4 packages in 107ms
-Installed 4 packages in 14ms
- + markdown-it-py==4.0.0
- + mdurl==0.1.2[2026-01-15 07:52:19.850037] 
+Resolved 4 packages in 129ms
+Prepared 4 packages in 132ms
+Installed 4 packages in 18ms
+ + markdown-it-py==[2026-01-15 08:05:17.859443] 4.0.0
+ + mdurl==0.1.2
  + pygments==2.19.2
  + rich==14.2.0
 
@@ -437,16 +409,20 @@ Installed 4 packages in 14ms
 ──────────────────────────────────────── pip ───────────────────────────────────────────
 
 Using standard pip install.
-Collecting streamlit (from -r /mount/src/blank-app/requirements.txt (line 1))
+Looking in indexes: https://pypi.org/simple, https://download.pytorch.org/whl/cpu
+Looking in links: https://data.pyg.org/whl/torch-2.9.1+cpu.html
+Collecting streamlit==1.53.0 (from -r /mount/src/blank-app/requirements.txt (line 1))
   Downloading streamlit-1.53.0-py3-none-any.whl.metadata (10 kB)
-Collecting torch (from -r /mount/src/blank-app/requirements.txt (line 2))
-  Downloading torch-2.9.1-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (30 kB)
-Collecting torch-geometric (from -r /mount/src/blank-app/requirements.txt (line 3))
-  Downloading torch_geometric-2.7.0-py3-none-any.whl.metadata (63 kB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.7/63.7 kB 8.4 MB/s eta 0:00:00[2026-01-15 07:52:20.866808] 
-Collecting torch-scatter (from -r /mount/src/blank-app/requirements.txt (line 4))
+Collecting torch==2.9.1+cpu (from -r /mount/src/blank-app/requirements.txt (line 3))
+  Downloading https://download.pytorch.org/whl/cpu/torch-2.9.1%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (29 kB)
+Collecting torchvision==0.20.1+cpu (from -r /mount/src/blank-app/requirements.txt (line 4))
+  Downloading https://download.pytorch.org/whl/cpu/torchvision-0.20.1%2Bcpu-cp311-cp311-linux_x86_64.whl (1.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 63.1 MB/s eta 0:00:00[2026-01-15 08:05:20.905864] 
+Collecting torchaudio==2.9.1+cpu (from -r /mount/src/blank-app/requirements.txt (line 5))
+  Downloading https://download.pytorch.org/whl/cpu/torchaudio-2.9.1%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (6.9 kB)
+Collecting torch-scatter==2.1.2 (from -r /mount/src/blank-app/requirements.txt (line 7))
   Downloading torch_scatter-2.1.2.tar.gz (108 kB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 108.0/108.0 kB 56.0 MB/s eta 0:00:00[2026-01-15 07:52:20.906606] 
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 108.0/108.0 kB 5.7 MB/s eta 0:00:00[2026-01-15 08:05:21.669126] 
   Installing build dependencies: started
   Installing build dependencies: finished with status 'done'
   Getting requirements to build wheel: started
@@ -465,14 +441,14 @@ Collecting torch-scatter (from -r /mount/src/blank-app/requirements.txt (line 4)
         File "/home/adminuser/venv/lib/python3.11/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 118, in get_requires_for_build_wheel
           return hook(config_settings)
                  ^^^^^^^^^^^^^^^^^^^^^
-        File "/tmp/pip-build-env-uzb7411e/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 331, in get_requires_for_build_wheel
+        File "/tmp/pip-build-env-d_3ua3v6/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 331, in get_requires_for_build_wheel
           return self._get_build_requires(config_settings, requirements=[])
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        File "/tmp/pip-build-env-uzb7411e/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 301, in _get_build_requires
+        File "/tmp/pip-build-env-d_3ua3v6/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 301, in _get_build_requires
           self.run_setup()
-        File "/tmp/pip-build-env-uzb7411e/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 512, in run_setup
+        File "/tmp/pip-build-env-d_3ua3v6/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 512, in run_setup
           super().run_setup(setup_script=setup_script)
-        File "/tmp/pip-build-env-uzb7411e/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 317, in run_setup
+        File "/tmp/pip-build-env-d_3ua3v6/overlay/lib/python3.11/site-packages/setuptools/build_meta.py", line 317, in run_setup
           exec(code, locals())
         File "<string>", line 8, in <module>
       ModuleNotFoundError: No module named 'torch'
@@ -501,11 +477,11 @@ Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.14.0)
 Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.14.0)
   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
 Downloading rich-14.2.0-py3-none-any.whl (243 kB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 243.4/243.4 kB 15.5 MB/s eta 0:00:00[2026-01-15 07:52:24.385270] 
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 243.4/243.4 kB 16.6 MB/s eta 0:00:00[2026-01-15 08:05:27.482434] 
 Downloading markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.3/87.3 kB 172.2 MB/s eta 0:00:00[2026-01-15 07:52:24.396597] 
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.3/87.3 kB 72.4 MB/s eta 0:00:00[2026-01-15 08:05:27.498677] 
 Downloading pygments-2.19.2-py3-none-any.whl (1.2 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 88.0 MB/s eta 0:00:00[2026-01-15 07:52:24.421124] 
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 77.4 MB/s eta 0:00:00[2026-01-15 08:05:27.525392] 
 Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
 Installing collected packages: pygments, mdurl, markdown-it-py, rich
   Attempting uninstall: pygments
@@ -531,5 +507,5 @@ Successfully installed markdown-it-py-4.0.0 mdurl-0.1.2 pygments-2.19.2 rich-14.
 
 ────────────────────────────────────────────────────────────────────────────────────────
 
-[07:52:26] ❗️ installer returned a non-zero exit code
-[07:52:26] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
+[08:05:30] ❗️ installer returned a non-zero exit code
+[08:05:30] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
