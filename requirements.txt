@@ -1,8 +1,15 @@
-streamlit==1.53.0
-python-docx==0.8.11
-
-torch==2.5.1+cpu
-torchvision==0.20.1+cpu
-torchaudio==2.5.1+cpu
-
---extra-index-url https://download.pytorch.org/whl/cpu
+streamlit
+torch==2.5.1
+torch-geometric
+torch-scatter
+torch-sparse
+pandas
+numpy
+easyocr
+deep-translator
+transformers
+sentence-transformers
+scikit-learn
+python-docx
+pdf2image
+Pillow
