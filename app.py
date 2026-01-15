@@ -3,126 +3,136 @@ import torch
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
-import cv2
 import easyocr
 import re
 import unicodedata
 import docx
 from PIL import Image
 from pdf2image import convert_from_bytes
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from transformers import pipeline
 from torch_geometric.data import HeteroData
 from sentence_transformers import SentenceTransformer
 from sklearn.preprocessing import LabelEncoder
 from sage_model import MultiRelationalGNN
 
-# --- SETTINGS ---
-st.set_page_config(page_title="Malay News Verification System", layout="wide")
+# --- CONFIGURATION ---
+st.set_page_config(page_title="Malay News AI Verification", layout="wide")
 
+# Initialize Session State to handle "Not Responding" issues
+if 'content' not in st.session_state:
+    st.session_state['content'] = ""
+
+def reset_app():
+    st.session_state['content'] = ""
+    st.rerun()
+
+# --- RESOURCE LOADING ---
 @st.cache_resource
 def load_all_resources():
     reader = easyocr.Reader(['ms', 'en'])
-    translator = Translator()
     summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-    st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2') # 384 dim
+    st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     
-    # Load Training Metadata
     df_orig = pd.read_csv('final_merged_fake_news_data.csv')
     le_source = LabelEncoder()
     le_source.fit(df_orig['site_url'].unique())
     
-    # Init GraphSAGE Model (Matches your .pt file weights)
-    model = MultiRelationalGNN(
-        hidden_channels=128, 
-        out_channels=2, 
-        article_in_channels=384, 
-        source_in_channels=len(le_source.classes_)
-    )
+    model = MultiRelationalGNN(128, 2, 384, len(le_source.classes_))
     checkpoint = torch.load('best_gnn_malay_model.pt', map_location='cpu')
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
-    
-    return reader, translator, summarizer, st_model, model, le_source
+    return reader, summarizer, st_model, model, le_source
 
-reader, translator, summarizer, st_model, gnn_model, le_source = load_all_resources()
+try:
+    reader, summarizer, st_model, gnn_model, le_source = load_all_resources()
+except Exception as e:
+    st.error(f"Missing files: {e}")
 
-# --- PREPROCESSING ---
-def final_clean_text(text):
-    if not isinstance(text, str): return ""
+def clean_text(text):
     text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
-    text = re.sub(r'http\S+|www\S+|<.*?>', '', text)
     text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
     return " ".join(text.split()).lower()
 
-# --- UI ---
+# --- UI LAYOUT ---
 st.title("🛡️ Unified Malay News Verification System")
 st.markdown("---")
 
 col_input, col_analysis = st.columns([1, 1])
 
 with col_input:
-    st.subheader("📥 Input Methods")
-    input_mode = st.selectbox("Select Input", ["Manual Typing", "Camera Scan", "Image Upload", "PDF Document", "Word Document"])
+    st.subheader("📥 Input & Extraction")
+    mode = st.selectbox("Select Input Method", ["Manual Typing", "Camera Scan", "Image Upload", "PDF Document", "Word Document"])
     
-    extracted_text = ""
+    # Extraction Logic
+    extracted = ""
+    if mode == "Camera Scan":
+        cam = st.camera_input("Scan")
+        if cam: extracted = " ".join([t[1] for t in reader.readtext(np.array(Image.open(cam)))])
+    elif mode == "Image Upload":
+        img = st.file_uploader("Upload Image", type=['jpg','png','jpeg'])
+        if img: extracted = " ".join([t[1] for t in reader.readtext(np.array(Image.open(img)))])
+    elif mode == "PDF Document":
+        pdf = st.file_uploader("Upload PDF", type=['pdf'])
+        if pdf:
+            for pg in convert_from_bytes(pdf.read()):
+                extracted += " ".join([t[1] for t in reader.readtext(np.array(pg))]) + " "
+    elif mode == "Word Document":
+        doc_f = st.file_uploader("Upload Word", type=['docx'])
+        if doc_f: extracted = "\n".join([p.text for p in docx.Document(doc_f).paragraphs])
 
-    if input_mode == "Manual Typing":
-        extracted_text = st.text_area("Type news here:", height=300)
-    elif input_mode == "Camera Scan":
-        cam_file = st.camera_input("Scan News")
-        if cam_file:
-            img = Image.open(cam_file)
-            res = reader.readtext(np.array(img))
-            extracted_text = " ".join([t[1] for t in res])
-    elif input_mode == "Image Upload":
-        img_file = st.file_uploader("Upload Image", type=['jpg', 'jpeg', 'png'])
-        if img_file:
-            extracted_text = " ".join([t[1] for t in reader.readtext(np.array(Image.open(img_file)))])
-    elif input_mode == "PDF Document":
-        pdf_file = st.file_uploader("Upload PDF", type=['pdf'])
-        if pdf_file:
-            images = convert_from_bytes(pdf_file.read())
-            for pg in images:
-                extracted_text += " ".join([t[1] for t in reader.readtext(np.array(pg))]) + "\n"
-    elif input_mode == "Word Document":
-        doc_file = st.file_uploader("Upload Word", type=['docx'])
-        if doc_file:
-            doc = docx.Document(doc_file)
-            extracted_text = "\n".join([p.text for p in doc.paragraphs])
+    # If file was uploaded, update session state
+    if extracted:
+        st.session_state['content'] = extracted
 
-    final_text = st.text_area("Final Text to Check:", value=extracted_text, height=200)
+    # MASTER TEXT BOX (Responsive)
+    final_news_text = st.text_area("Final Content (Review / Edit here):", 
+                                   value=st.session_state['content'], 
+                                   height=400, 
+                                   key="master_box")
+    # Sync typing back to state
+    st.session_state['content'] = final_news_text
 
 with col_analysis:
     st.subheader("🔍 AI Intelligence")
-    if final_text:
-        # Translation & Summary
-        with st.expander("Language Tools"):
-            target = st.selectbox("Translate to", ["en", "ms", "zh-cn"])
-            if st.button("Translate"):
-                st.write(translator.translate(final_text, dest=target).text)
-            if st.button("Summarize"):
-                st.info(summarizer(final_text[:1024], max_length=100)[0]['summary_text'])
+    if final_news_text:
+        with st.expander("Language Tools (Malay Focus)"):
+            if st.button("Translate Everything to Malay"):
+                chunks = [final_news_text[i:i+4000] for i in range(0, len(final_news_text), 4000)]
+                translated = [GoogleTranslator(source='auto', target='ms').translate(c) for c in chunks]
+                st.write(" ".join(translated))
 
-        # GNN Prediction
+            if st.button("Generate Malay Summary"):
+                raw = summarizer(final_news_text[:1024], max_length=100, min_length=30)[0]['summary_text']
+                st.info(GoogleTranslator(source='auto', target='ms').translate(raw))
+
         st.write("---")
-        st.subheader("GNN Model Verification")
-        source_url = st.text_input("Source URL (e.g., hmetro.com.my)", "facebook.com")
+        st.subheader("GNN Prediction")
+        source = st.text_input("Source URL", "facebook.com")
         
-        if st.button("Predict"):
-            cleaned = final_clean_text(final_text)
-            emb = torch.tensor(st_model.encode([cleaned]), dtype=torch.float)
-            
-            data = HeteroData()
-            data['article'].x = emb
-            data['source'].x = torch.eye(len(le_source.classes_))
-            s_idx = le_source.transform([source_url])[0] if source_url in le_source.classes_ else 0
-            data['article', 'published_by', 'source'].edge_index = torch.tensor([[0], [s_idx]], dtype=torch.long)
+        if st.button("Run Graph Analysis"):
+            with st.spinner("Processing..."):
+                # Auto-Malay for GNN accuracy
+                malay_text = GoogleTranslator(source='auto', target='ms').translate(final_news_text[:4000])
+                emb = torch.tensor(st_model.encode([clean_text(malay_text)]), dtype=torch.float)
+                
+                data = HeteroData()
+                data['article'].x = emb
+                data['source'].x = torch.eye(len(le_source.classes_))
+                s_idx = le_source.transform([source])[0] if source in le_source.classes_ else 0
+                data['article','published_by','source'].edge_index = torch.tensor([[0],[s_idx]])
+                data['article','same_day','article'].edge_index = torch.empty((2,0), dtype=torch.long)
 
-            with torch.no_grad():
-                out = gnn_model(data.x_dict, data.edge_index_dict)
-                prob = F.softmax(out['article'], dim=-1)
-                pred = out['article'].argmax(dim=-1).item()
-            
-            label = "REAL" if pred == 1 else "FAKE"
-            st.metric("GNN Result", label, f"{prob[0][pred]*100:.2f}% Confidence")
+                with torch.no_grad():
+                    out = gnn_model(data.x_dict, data.edge_index_dict)
+                    prob = F.softmax(out['article'], dim=-1)
+                    pred = out['article'].argmax(dim=-1).item()
+                
+                label = "REAL NEWS" if pred == 1 else "FAKE NEWS"
+                if pred == 1: st.success(f"{label} ({prob[0][pred]*100:.2f}%)")
+                else: st.error(f"{label} ({prob[0][pred]*100:.2f}%)")
+
+        if st.button("🔄 Reset App"):
+            reset_app()
+    else:
+        st.info("Awaiting input from the left panel.")
