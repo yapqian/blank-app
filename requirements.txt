@@ -1,13 +1,8 @@
 streamlit==1.53.0
+python-docx==0.8.11
 
 torch==2.5.1+cpu
 torchvision==0.20.1+cpu
 torchaudio==2.5.1+cpu
 
 --extra-index-url https://download.pytorch.org/whl/cpu
-
-torch-scatter==2.1.2
-torch-sparse==0.6.18
-torch-cluster==1.6.3
-torch-spline-conv==1.2.2
-torch-geometric==2.7.0
