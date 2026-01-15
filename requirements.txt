@@ -1,13 +1,14 @@
 streamlit
 torch==2.5.1
+# Pre-compiled binaries for Torch 2.5.1 + CPU
+https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_scatter-2.1.2%2Bpt25cpu-cp311-cp311-linux_x86_64.whl
+https://data.pyg.org/whl/torch-2.5.0%2Bcpu/torch_sparse-0.6.18%2Bpt25cpu-cp311-cp311-linux_x86_64.whl
 torch-geometric
-torch-scatter
-torch-sparse
 pandas
 numpy
 easyocr
 deep-translator
-transformers
+transformers==4.47.1
 sentence-transformers
 scikit-learn
 python-docx
