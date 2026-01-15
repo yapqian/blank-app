@@ -6,7 +6,7 @@ import numpy as np
 import easyocr
 import re
 import unicodedata
-import python-docx
+import docx
 from PIL import Image
 from pdf2image import convert_from_bytes
 from deep_translator import GoogleTranslator
