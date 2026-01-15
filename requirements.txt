@@ -4,11 +4,11 @@ torch==2.9.1+cpu
 torchvision==0.20.1+cpu
 torchaudio==2.9.1+cpu
 
+--extra-index-url https://download.pytorch.org/whl/cpu
+--find-links https://data.pyg.org/whl/torch-2.9.1+cpu.html
+
 torch-scatter==2.1.2
 torch-sparse==0.6.18
 torch-cluster==1.6.3
 torch-spline-conv==1.2.2
 torch-geometric==2.7.0
-
---extra-index-url https://download.pytorch.org/whl/cpu
---find-links https://data.pyg.org/whl/torch-2.9.1+cpu.html
